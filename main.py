@@ -3,10 +3,14 @@ import json
 from faster_whisper import WhisperModel
 from docxtpl import DocxTemplate
 from docx import Document
+from dotenv import load_dotenv
+load_dotenv()
 
 # =============================
 # INIT
 # =============================
+# Detailniveau kan er nog bij bij voporbeelden in prompt
+# Lengte kan ook
 import streamlit as st
 from openai import OpenAI
 
@@ -42,9 +46,9 @@ BASISDOCUMENT = parse_basisdocument(read_docx("basis.docx"))
 BASISDOCUMENT_TEXT = "\n".join(BASISDOCUMENT)
 
 # voorbeelden tijdelijk uitgeschakeld
-# VOORBEELD1 = read_docx("voorbeeld1.docx")
-# VOORBEELD2 = read_docx("voorbeeld2.docx")
-# VOORBEELD3 = read_docx("voorbeeld3.docx")
+VOORBEELD1 = read_docx("voorbeeld1.docx")
+VOORBEELD2 = read_docx("voorbeeld2.docx")
+VOORBEELD3 = read_docx("voorbeeld3.docx")
 
 # =============================
 # AUDIO → TEXT
@@ -122,18 +126,57 @@ def generate_json(transcript, notes=""):
 
     SUPPLEMENT SEARCH RULE:
     - Scan BASISDOCUMENT regel voor regel
-    - Match op woorden (niet exacte naam)
-    - Magnesium bisglycinaat = match "magnesium" + "bisglycinaat"
-    - Geen filtering door model toegestaan
-    - Neem alleen relevante details over
+    - Match op belangrijke woorden, synoniemen en supplementvormen
+    - Exacte naam is niet verplicht
+    - Magnesium bisglycinaat mag matchen op:
+    "magnesium" + "bisglycinaat"
+    - Neem alleen inhoudelijk relevante regels over
+    - Relevante regels bevatten bijvoorbeeld:
+    dosering, gebruiksmoment, opbouw, werking, waarschuwingen, combinaties, prijs of houdbaarheid
+    - Wanneer een specifiek supplementproduct, pot of verpakking genoemd wordt:
+    - vermeld altijd de prijs als deze beschikbaar is in het BASISDOCUMENT
+    - prijs moet als aparte bullet worden weergegeven
+    - de prijs mag letterlijk overgenomen (gekopieerd) worden uit het BASISDOCUMENT zonder aanpassing
+
+    VOORBEELD:
+    • Prijs: €39,95
+    
+    SUPPLEMENT SELECTION RULE:
+    - Kies per supplementtype maximaal 1–2 relevante supplementvarianten
+    - Kies de meest complete en bruikbare varianten
+    - Vermijd lange lijsten met bijna identieke producten
+    - Houd het overzichtelijk en praktisch voor de cliënt
+
+    SUPPLEMENT FORMAT RULE:
+    - Verwerk ELK relevant detail als aparte bullet
+    - Elke bullet mag slechts ÉÉN concreet detail bevatten
+    - Combineer nooit meerdere details in dezelfde bullet
+    - Elke bullet moet duidelijk en volledig leesbaar zijn (niet te kort of fragmentarisch)
+
+    VOORBEELD GOED:
+    • 1 capsule per dag
+    • Innemen voor ontbijt
+    • Opbouwen naar 2 capsules per dag
+    • Na openen koel bewaren
+    • Houdbaarheid na openen: 6 weken
+
+    VOORBEELD FOUT:
+    • 1 capsule per dag voor ontbijt en koel bewaren
+
     - Gebruik korte concrete bullets
-    - Vermeld:
-    - dosering
-    - gebruiksmoment
-    - opbouw
-    - prijs
-    - houdbaarheid
-    indien beschikbaar
+    - Vermijd irrelevante of algemene tekst
+
+    HARD EXTRACTION RULE:
+    - Elk supplement uit transcript moet volledig worden uitgewerkt
+    - Scan voor elk supplement het volledige BASISDOCUMENT
+    - Neem alle duidelijk relevante regels mee
+    - Een regel is relevant als:
+    - het supplement duidelijk genoemd wordt
+    - OF een sterke inhoudelijke match aanwezig is
+    - Zwakke of losse matches overslaan
+    - Geen dubbele informatie opnemen
+    - Geen samenvatting van relevante regels
+    - Behoud concrete details zo volledig mogelijk
 
     MOMENTEN:
     - "voor ontbijt" =
@@ -170,6 +213,27 @@ def generate_json(transcript, notes=""):
     {BASISDOCUMENT_TEXT}
 
     ====================
+    VOORBEELDEN:
+
+    VOORBEELD 1:
+    {VOORBEELD1}
+
+    VOORBEELD 2:
+    {VOORBEELD2}
+
+    VOORBEELD 3:
+    {VOORBEELD3}
+
+    Gebruik deze voorbeelden als referentie voor:
+    - schrijfstijl
+    - structuur
+    - formulering
+    - manier van aanspreken
+
+    Kopieer de stijl, NIET de inhoud.
+        
+    ====================
+
     JSON:
 
     {{
