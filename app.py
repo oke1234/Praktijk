@@ -3,7 +3,7 @@ from docx import Document
 from main import generate_word, generate_json, clean_supplements, strip_bullets, transcribe_audio
 
 # ---------- UI ----------
-st.title("Consult Verslag Generator")
+st.title("Consult Verslag Generator V2")
 
 # ---------- TRANSCRIPT ----------
 st.subheader("Transcript")
