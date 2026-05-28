@@ -13,12 +13,14 @@ load_dotenv()
 # Lengte kan ook
 import streamlit as st
 from openai import OpenAI
+# laad .env bestand
+load_dotenv()
 
 client = OpenAI(
-    api_key=st.secrets["OPENAI_API_KEY"]
+    api_key=os.getenv("OPENAI_API_KEY")
 )
 
-@st.cache_resource
+
 def load_whisper():
     return WhisperModel("base")
 
@@ -64,177 +66,152 @@ def generate_json(transcript, notes=""):
 
     SYSTEM = f"""
     DOEL:
-    Schrijf een praktisch en concreet consultverslag voor de cliënt zelf.
-    De cliënt moet exact begrijpen:
-    - wat er besproken is
-    - wat de oorzaak/problemen zijn
-    - wat hij/zij moet doen
-    - wanneer supplementen genomen moeten worden
-    - wat vermeden of verhoogd moet worden
-    - welke onderzoeken nog moeten gebeuren
+    Schrijf een volledig, praktisch en professioneel consultverslag voor de cliënt.
+    Het verslag moet voelen als een echt therapeutisch adviesdocument dat direct gebruikt kan worden.
 
-    SCHRIJFSTIJL:
-    - Concreet
-    - Praktisch
-    - Duidelijk, praktisch en volledig
-    - Geen algemene adviezen
-    - Geen vage formuleringen
-    - Geen herhaling
+    De cliënt moet alles begrijpen zonder extra uitleg:
+    - wat er speelt in het lichaam en de klachten
+    - wat de oorzaak en samenhang is
+    - wat er concreet moet gebeuren
+    - hoe supplementen gebruikt moeten worden (stap voor stap)
+    - wat voeding/levensstijl doet met de klachten
+    - welke vervolgstappen of onderzoeken nodig zijn
+
+    ====================
+
+    SCHRIJFSTIJL (BELANGRIJKSTE REGEL):
+
+    Schrijf in een mix van:
+    - korte alinea’s
+    - en bullets
+
+    MAAR:
+    - elke bullet is een mini-uitleg (niet 1 losse zin)
+    - bullets zijn verhalend, niet droog
+    - elke bullet bevat context + uitleg + situatie + eventueel gevolg
+
+    Dus NIET:
+    • pijn in knie
+
+    MAAR WEL:
+    • Je ervaart pijn in de knie bij langere belasting zoals lopen of traplopen, waarbij de belasting duidelijk toeneemt na 10–15 minuten en herstel nodig is na rust.
+
+    ====================
+
+    STRUCTUUR (MOET HIER OP LIJKEN):
+
+    - Bovenaan: datum + naam + volgende consult
+    - Daarna: klachten en huidige situatie (meest uitgebreid)
+    - Daarna: voeding
+    - Daarna: supplementen uitleg (uitgebreid + stap-voor-stap)
+    - Daarna: onderzoeken / therapeuten
+    - Daarna: overzicht supplementen schema
+
+    ====================
+
+    SCHRIJFREGELS:
+
+    - Concreet, duidelijk en professioneel
+    - Geen algemene adviezen zonder context
+    - Geen vage woorden zoals “gezond”, “beter”, “goed bezig”
+    - Altijd oorzaak → gevolg → impact op dagelijks leven
+    - Nooit samenvatten als details beschikbaar zijn
+    - Werk elk onderwerp volledig uit alsof een nieuwe therapeut alles moet begrijpen
+
+    - Spreek de cliënt aan met “u”
+    - Nooit “je” of “jij”
     - Formeel Nederlands
-    - Schrijf duidelijk en volledig
-    - Het verslag mag uitgebreid zijn wanneer nodig
-    - Vermijd onnodige herhaling of algemene uitleg
-    - Minimaal 500 woorden, geen maximum
-    - Volledigheid en duidelijkheid zijn belangrijker dan lengte
-    - Spreek de cliënt aan met "u"
-    - Gebruik formele aanspreekvormen
-    - Gebruik nooit "je" of "jij"
 
-    BELANGRIJKE REGELS:
+    - Elke klacht bevat:
+    frequentie, ernst, triggers, belasting, en herstel
+
+    - Elke supplementbeschrijving bevat:
+    werking + reden + timing + opbouw + wat te verwachten
+
+    ====================
+
+    BELANGRIJKE REGELS (HARD):
+
     - Geef ALTIJD geldige JSON
     - Geen tekst buiten JSON
     - Geen uitleg
     - Geen hallucinaties
-    - Geen verwijzingen naar transcript, basisdocument of welke bron dan ook    
-    - Geen woorden zoals: "volgens", "bron", "uit transcript", "gebaseerd op", "advies"
-    - Gebruik transcript en notities als hoofdbron
-    - Gebruik BASISDOCUMENT alleen om supplementdetails aan te vullen
-    - Voeg NOOIT supplementen toe die niet genoemd zijn
-    - Schrijf nooit:
-    "niet vermeld in transcript"
-    "niet gevonden in basisdocument"
-    of vergelijkbare uitleg
+    - Geen bronverwijzingen
+    - Geen woorden zoals: “volgens”, “uit transcript”, “advies”
 
-    INHOUD:
-    - Schrijf alsof dit direct naar de cliënt gestuurd wordt
-    - Wees specifiek over klachten en acties
-    - Benoem concrete voeding die verminderd/verhoogd moet worden
-    - Benoem concrete supplement-instructies
-    - Benoem concrete vervolgstappen
+    - Gebruik transcript + notities als enige bron
+    - Gebruik BASISDOCUMENT alleen voor supplementdetails
+    - Voeg nooit nieuwe supplementen toe
 
-    BULLETS:
-    - "huidige_situatie"
-    - "voeding_verminderen"
-    - "voeding_verhogen"
-    - "onderzoeken"
-    - "therapeuten"
+    ====================
 
-    moeten:
-    - korte bullets zijn
-    - elke bullet starten met "•"
-    - elke bullet op nieuwe regel
+    BULLETS REGEL (ZEER BELANGRIJK):
 
-    SUPPLEMENT SEARCH RULE:
-    - Scan BASISDOCUMENT regel voor regel
-    - Match op belangrijke woorden, synoniemen en supplementvormen
-    - Exacte naam is niet verplicht
-    - Magnesium bisglycinaat mag matchen op:
-    "magnesium" + "bisglycinaat"
-    - Neem alleen inhoudelijk relevante regels over
-    - Relevante regels bevatten bijvoorbeeld:
-    dosering, gebruiksmoment, opbouw, werking, waarschuwingen, combinaties, prijs of houdbaarheid
-    - Wanneer een specifiek supplementproduct, pot of verpakking genoemd wordt:
-    - vermeld altijd de prijs als deze beschikbaar is in het BASISDOCUMENT
-    - prijs moet als aparte bullet worden weergegeven
-    - de prijs mag letterlijk overgenomen (gekopieerd) worden uit het BASISDOCUMENT zonder aanpassing
+    - "huidige_situatie" = verhalende bullets (1–3 zinnen per bullet)
+    - elke bullet begint met "•"
+    - elke bullet = 1 onderwerp met context
+    - geen losse woorden of korte zinnen
 
-    VOORBEELD:
-    • Prijs: €39,95
-    
-    SUPPLEMENT SELECTION RULE:
-    - Kies per supplementtype maximaal 1–2 relevante supplementvarianten
-    - Kies de meest complete en bruikbare varianten
-    - Vermijd lange lijsten met bijna identieke producten
-    - Houd het overzichtelijk en praktisch voor de cliënt
+    Andere secties:
+    - voeding_verminderen
+    - voeding_verhogen
+    - onderzoeken
+    - therapeuten
 
-    SUPPLEMENT FORMAT RULE:
-    - Verwerk ELK relevant detail als aparte bullet
-    - Elke bullet mag slechts ÉÉN concreet detail bevatten
-    - Combineer nooit meerdere details in dezelfde bullet
-    - Elke bullet moet duidelijk en volledig leesbaar zijn (niet te kort of fragmentarisch)
+    ====================
 
-    VOORBEELD GOED:
-    • 1 capsule per dag
-    • Innemen voor ontbijt
-    • Opbouwen naar 2 capsules per dag
-    • Na openen koel bewaren
-    • Houdbaarheid na openen: 6 weken
+    SUPPLEMENT REGELS:
 
-    VOORBEELD FOUT:
-    • 1 capsule per dag voor ontbijt en koel bewaren
+    - Werk supplementen stap voor stap uit
+    - Elke stap = aparte bullet
+    - Geen dubbele info in 1 bullet
+    - Opbouwschema is verplicht als het in transcript staat
 
-    - Gebruik korte concrete bullets
-    - Vermijd irrelevante of algemene tekst
+    - Als “opbouw” of dosering verandert:
+    → maak dit een logische volgorde (week 1 → week 2 → etc.)
 
-    HARD EXTRACTION RULE:
-    - Elk supplement uit transcript moet volledig worden uitgewerkt
-    - Scan voor elk supplement het volledige BASISDOCUMENT
-    - Neem alle duidelijk relevante regels mee
-    - Een regel is relevant als:
-    - het supplement duidelijk genoemd wordt
-    - OF een sterke inhoudelijke match aanwezig is
-    - Zwakke of losse matches overslaan
-    - Geen dubbele informatie opnemen
-    - Geen samenvatting van relevante regels
-    - Behoud concrete details zo volledig mogelijk
+    - Alleen relevante details uit BASISDOCUMENT gebruiken
+    - Altijd prijs vermelden indien aanwezig
 
-    MOMENTEN:
-    - "voor ontbijt" =
-    "voor_ontbijt": true
-    "ontbijt": false
+    ====================
 
-    - "bij ontbijt" =
-    "ontbijt": true
-    "voor_ontbijt": false
+    MOMENTEN LOGICA:
 
-    - Zet nooit beide op true tenzij expliciet genoemd
+    - "voor ontbijt" → voor_ontbijt = true
+    - "bij ontbijt" → ontbijt = true
+    - nooit beide tegelijk tenzij expliciet genoemd
+
+    ====================
 
     ALS INFORMATIE ONTBREEKT:
-    - Gebruik exact: "Onbekend"
-    - Gebruik NOOIT "NVT"
-    - Bij supplementdetails:
-    - BIJ supplementen:
-    ontbrekende velden volledig weglaten (NIET invullen met "Onbekend")
+
+    - gebruik "Onbekend"
+    - NOOIT "NVT"
+    - ontbrekende supplementvelden weglaten (niet invullen)
+
+    ====================
 
     CONTROLE:
-    Controleer VOOR output of ALLE genoemde:
-    - klachten
-    - supplementen
-    - acties
-    - voeding
-    - onderzoeken
-    - symptomen
-    zijn verwerkt.
 
-    Verwijder niets.
-    
-    ====================
-    BASISDOCUMENT:
-    {BASISDOCUMENT_TEXT}
+    Controleer vóór output:
+    - alle klachten verwerkt
+    - alle supplementen verwerkt
+    - alle acties verwerkt
+    - geen samenvattingen waar details zijn
 
     ====================
-    VOORBEELDEN:
 
-    VOORBEELD 1:
-    {VOORBEELD1}
+    VOORBEELD STIJL (ZEER BELANGRIJK):
 
-    VOORBEELD 2:
-    {VOORBEELD2}
+    Gebruik deze stijl als leidraad:
 
-    VOORBEELD 3:
-    {VOORBEELD3}
+    • Je ervaart toename van klachten bij belasting zoals wandelen en traplopen, waarbij de pijn vooral optreedt na enkele minuten en daarna langzaam afneemt in rust.
+    • De energie is redelijk stabiel, maar wordt duidelijk beïnvloed door werkdruk en mentale belasting gedurende de week.
+    • De nachtrust varieert in duur en kwaliteit, waarbij sommige nachten korter zijn maar wel als herstellend worden ervaren.
 
-    Gebruik deze voorbeelden als referentie voor:
-    - schrijfstijl
-    - structuur
-    - formulering
-    - manier van aanspreken
-
-    Kopieer de stijl, NIET de inhoud.
-        
     ====================
 
-    JSON:
+    JSON OUTPUT:
 
     {{
     "datum": "",
@@ -258,8 +235,15 @@ def generate_json(transcript, notes=""):
         "voor_slapen": false
         }}
     ]
-    }} 
+    }}
+
+    ====================
+
+    BELANGRIJK:
+    Kopieer NIET de voorbeelden letterlijk.
+    Kopieer alleen de stijl, structuur en diepgang.
     """
+    
     USER = f"""
     TRANSCRIPT:
     {transcript}
@@ -306,18 +290,20 @@ def strip_bullets(data):
 def kruis(val):
     return "✖" if val is True else ""
     
+def safe_get(s, key):
+    return s.get(key, False)    
 # =============================
 # WORD GENERATOR
 # =============================
 def generate_word(data, output="verslag.docx"):
     for s in data["supplementen"]:
-        s["kruis_voor_ontbijt"] = kruis(s["voor_ontbijt"])
-        s["kruis_ontbijt"] = kruis(s["ontbijt"])
-        s["kruis_tussen_1"] = kruis(s["tussen_1"])
-        s["kruis_lunch"] = kruis(s["lunch"])
-        s["kruis_tussen_2"] = kruis(s["tussen_2"])
-        s["kruis_diner"] = kruis(s["diner"])
-        s["kruis_voor_slapen"] = kruis(s["voor_slapen"])
+        s["kruis_voor_ontbijt"] = kruis(safe_get(s, "voor_ontbijt"))
+        s["kruis_ontbijt"] = kruis(safe_get(s, "ontbijt"))
+        s["kruis_tussen_1"] = kruis(safe_get(s, "tussen_1"))
+        s["kruis_lunch"] = kruis(safe_get(s, "lunch"))
+        s["kruis_tussen_2"] = kruis(safe_get(s, "tussen_2"))
+        s["kruis_diner"] = kruis(safe_get(s, "diner"))
+        s["kruis_voor_slapen"] = kruis(safe_get(s, "voor_slapen"))
 
     doc = DocxTemplate("template.docx")
     
